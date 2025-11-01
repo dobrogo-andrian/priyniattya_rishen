@@ -5,10 +5,6 @@ import numpy as np
 from typing import List, Tuple, Dict
 
 
-# ============================================================================
-# БАЗОВИЙ КЛАС ДЛЯ ДЕРЕВА РІШЕНЬ
-# ============================================================================
-
 class DecisionNode:
     """Вузол рішення (квадрат)"""
 
@@ -178,21 +174,50 @@ class DecisionTree:
         if filename:
             plt.savefig(filename, dpi=300, bbox_inches='tight')
             print(f"Дерево збережено у файл: {filename}")
-
-        plt.show()
+            plt.close(fig)  # Закриваємо фігуру після збереження
+        else:
+            plt.show()
 
     def _draw_node(self, ax, node, parent_x=None, parent_y=None, label="", probability=None):
         """Рекурсивно малювати вузол та його дочірні вузли"""
-        # Малюємо ребро від батька
+
+        # Визначаємо точку з'єднання на контурі вузла
+        connection_x = node.x
+        connection_y = node.y
+
         if parent_x is not None:
-            ax.plot([parent_x, node.x], [parent_y, node.y], 'k-', linewidth=2)
+            dx = node.x - parent_x
+            dy = node.y - parent_y
+            dist = np.sqrt(dx ** 2 + dy ** 2)
+
+            if dist > 0:
+                # Нормалізуємо вектор напрямку
+                dx_norm = dx / dist
+                dy_norm = dy / dist
+
+                # Визначаємо відступ залежно від типу вузла
+                if isinstance(node, DecisionNode):
+                    offset = 0.35  # Відступ для квадрата
+                    connection_x = node.x - dx_norm * offset
+                    connection_y = node.y - dy_norm * offset
+                elif isinstance(node, ChanceNode):
+                    offset = 0.25  # Радіус кола
+                    connection_x = node.x - dx_norm * offset
+                    connection_y = node.y - dy_norm * offset
+                elif isinstance(node, EndNode):
+                    offset = 0.3  # Відступ для трикутника
+                    connection_x = node.x - dx_norm * offset
+                    connection_y = node.y - dy_norm * offset
+
+            # Малюємо ребро від батька до контуру вузла
+            ax.plot([parent_x, connection_x], [parent_y, connection_y], 'k-', linewidth=2)
 
             # Підпис ребра
-            mid_x = (parent_x + node.x) / 2
-            mid_y = (parent_y + node.y) / 2
+            mid_x = (parent_x + connection_x) / 2
+            mid_y = (parent_y + connection_y) / 2
 
             if probability is not None:
-                label_text = f"{label}\np={probability:.2f}"
+                label_text = f"{label}\\np={probability:.2f}"
             else:
                 label_text = label
 
@@ -234,18 +259,40 @@ class DecisionTree:
 
             # Виграш під вузлом
             ax.text(node.x, node.y - 0.5, f'{node.payoff:.0f}',
-                    fontsize=10, ha='center', weight='bold', color='red')
+                    fontsize=10, ha='center', weight='bold', color='black')
 
         # Рекурсивно малюємо дочірні вузли
         if hasattr(node, 'children'):
             for child_info in node.children:
-                self._draw_node(ax, child_info['node'], node.x, node.y,
+                # Визначаємо початкову точку на контурі поточного вузла
+                child_x = child_info['node'].x
+                child_y = child_info['node'].y
+
+                dx = child_x - node.x
+                dy = child_y - node.y
+                dist = np.sqrt(dx ** 2 + dy ** 2)
+
+                start_x = node.x
+                start_y = node.y
+
+                if dist > 0:
+                    dx_norm = dx / dist
+                    dy_norm = dy / dist
+
+                    # Визначаємо відступ для початкової точки
+                    if isinstance(node, DecisionNode):
+                        offset = 0.35
+                        start_x = node.x + dx_norm * offset
+                        start_y = node.y + dy_norm * offset
+                    elif isinstance(node, ChanceNode):
+                        offset = 0.25
+                        start_x = node.x + dx_norm * offset
+                        start_y = node.y + dy_norm * offset
+
+                self._draw_node(ax, child_info['node'], start_x, start_y,
                                 child_info['label'], child_info.get('probability'))
 
 
-# ============================================================================
-# ЗАВДАННЯ №1: СТВОРЕННЯ ВИРОБНИЦТВА
-# ============================================================================
 
 def task1_create_production_tree(A1: float, A2: float, A3: float,
                                  B1: float, B2: float, B3: float):
@@ -277,20 +324,20 @@ def task1_create_production_tree(A1: float, A2: float, A3: float,
     root = DecisionNode("Рішення", 1, 5)
     tree.root = root
 
-    # Вузли випадковості для кожного рішення
-    chance1 = ChanceNode("Ринок", 4, 7)
+    # Вузли випадковості для кожного рішення - збільшено відстань
+    chance1 = ChanceNode("Ринок", 4, 8)
     chance2 = ChanceNode("Ринок", 4, 5)
-    chance3 = ChanceNode("Ринок", 4, 3)
+    chance3 = ChanceNode("Ринок", 4, 2)
 
-    # Кінцеві вузли
-    end11 = EndNode("Спр.", 7, 8, A1)
-    end12 = EndNode("Неспр.", 7, 6, B1)
+    # Кінцеві вузли - збільшено вертикальну відстань
+    end11 = EndNode("Спр.", 7, 9, A1)
+    end12 = EndNode("Неспр.", 7, 7, B1)
 
-    end21 = EndNode("Спр.", 7, 5.5, A2)
-    end22 = EndNode("Неспр.", 7, 4.5, B2)
+    end21 = EndNode("Спр.", 7, 6, A2)
+    end22 = EndNode("Неспр.", 7, 4, B2)
 
-    end31 = EndNode("Спр.", 7, 3.5, A3)
-    end32 = EndNode("Неспр.", 7, 2.5, B3)
+    end31 = EndNode("Спр.", 7, 3, A3)
+    end32 = EndNode("Неспр.", 7, 1, B3)
 
     # Будуємо зв'язки
     root.add_child(chance1, "Велике виробництво")
@@ -359,10 +406,10 @@ def task2_market_research_tree(A1: float, A2: float, A3: float,
     """
     Побудова дерева рішень з урахуванням дослідження ринку
 
-    P11 - ймовірність сприятливого факту при сприятливому прогнозі
-    P12 - ймовірність несприятливого факту при сприятливому прогнозі
-    P21 - ймовірність сприятливого факту при несприятливому прогнозі
-    P22 - ймовірність несприятливого факту при несприятливому прогнозі
+    P11 - ймовірність сприятливого прогнозу при сприятливому факті
+    P12 - ймовірність сприятливого прогнозу при несприятливому факті
+    P21 - ймовірність несприятливого прогнозу при сприятливому факті
+    P22 - ймовірність несприятливого прогнозу при несприятливому факті
     Q - вартість консалтингу
     """
     print("\n" + "=" * 100)
@@ -371,70 +418,136 @@ def task2_market_research_tree(A1: float, A2: float, A3: float,
 
     print("\n📋 ВХІДНІ ДАНІ:")
     print(f"   Вартість консалтингу: {Q:,.0f} г.о.")
-    print(f"\n   Ймовірності прогнозу:")
-    print(f"      Сприятливий прогноз: 0.75")
-    print(f"      Несприятливий прогноз: 0.25")
 
     print(f"\n   Матриця умовних ймовірностей:")
-    print(f"      {'':20} {'Факт Спр.':<15} {'Факт Неспр.':<15}")
-    print(f"      {'Прогноз Спр.':<20} {P11:<15.2f} {P12:<15.2f}")
-    print(f"      {'Прогноз Неспр.':<20} {P21:<15.2f} {P22:<15.2f}")
-
-    # Обчислюємо апостеріорні ймовірності за формулою Байєса
-    # P(Сприятливі | Прогноз) = P(Прогноз | Сприятливі) * P(Сприятливі) / P(Прогноз)
+    print(f"      {'':20} {'Прогноз Спр.':<15} {'Прогноз Неспр.':<15}")
+    print(f"      {'Факт Спр.':<20} {P11:<15.2f} {P21:<15.2f}")
+    print(f"      {'Факт Неспр.':<20} {P12:<15.2f} {P22:<15.2f}")
 
     # Апріорні ймовірності
     p_favorable = 0.5
     p_unfavorable = 0.5
 
-    # Ймовірності прогнозів (з умови)
-    p_prog_fav = 0.75
-    p_prog_unfav = 0.25
+    # КРОК 1: Обчислюємо ймовірності прогнозів за теоремою повної ймовірності
+    # P(Прогноз Спр.) = P(Прогноз Спр. | Факт Спр.) × P(Факт Спр.) +
+    #                   P(Прогноз Спр. | Факт Неспр.) × P(Факт Неспр.)
+    p_prog_fav = P11 * p_favorable + P12 * p_unfavorable
+    p_prog_unfav = P21 * p_favorable + P22 * p_unfavorable
 
-    # За теоремою повної ймовірності:
-    # P(Прогноз Спр.) = P(Прогноз Спр. | Спр.) * P(Спр.) + P(Прогноз Спр. | Неспр.) * P(Неспр.)
+    print(f"\n📊 КРОК 1: Ймовірності прогнозів (теорема повної ймовірності):")
+    print(f"   P(Прогноз Спр.) = {P11}×{p_favorable} + {P12}×{p_unfavorable} = {p_prog_fav:.3f}")
+    print(f"   P(Прогноз Неспр.) = {P21}×{p_favorable} + {P22}×{p_unfavorable} = {p_prog_unfav:.3f}")
 
-    # Апостеріорні ймовірності при сприятливому прогнозі
-    # P(Спр. | Прогноз Спр.) = P11 * p_favorable / p_prog_fav
+    # КРОК 2: Обчислюємо апостеріорні ймовірності за теоремою Байєса
+    # P(Факт | Прогноз) = P(Прогноз | Факт) × P(Факт) / P(Прогноз)
+
+    # При сприятливому прогнозі:
     p_fav_given_prog_fav = (P11 * p_favorable) / p_prog_fav
-    p_unfav_given_prog_fav = 1 - p_fav_given_prog_fav
+    p_unfav_given_prog_fav = (P12 * p_unfavorable) / p_prog_fav
 
-    # Апостеріорні ймовірності при несприятливому прогнозі
-    # P(Спр. | Прогноз Неспр.) = P21 * p_favorable / p_prog_unfav
+    # При несприятливому прогнозі:
     p_fav_given_prog_unfav = (P21 * p_favorable) / p_prog_unfav
-    p_unfav_given_prog_unfav = 1 - p_fav_given_prog_unfav
+    p_unfav_given_prog_unfav = (P22 * p_unfavorable) / p_prog_unfav
 
-    print(f"\n   Апостеріорні ймовірності:")
-    print(f"      При сприятливому прогнозі:")
-    print(f"         P(Спр. | Прогноз Спр.) = {p_fav_given_prog_fav:.3f}")
-    print(f"         P(Неспр. | Прогноз Спр.) = {p_unfav_given_prog_fav:.3f}")
-    print(f"      При несприятливому прогнозі:")
-    print(f"         P(Спр. | Прогноз Неспр.) = {p_fav_given_prog_unfav:.3f}")
-    print(f"         P(Неспр. | Прогноз Неспр.) = {p_unfav_given_prog_unfav:.3f}")
+    print(f"\n📊 КРОК 2: Апостеріорні ймовірності (теорема Байєса):")
+    print(f"   При сприятливому прогнозі:")
+    print(f"      P(Факт Спр. | Прогноз Спр.) = ({P11}×{p_favorable})/{p_prog_fav:.3f} = {p_fav_given_prog_fav:.3f}")
+    print(f"      P(Факт Неспр. | Прогноз Спр.) = ({P12}×{p_unfavorable})/{p_prog_fav:.3f} = {p_unfav_given_prog_fav:.3f}")
+    print(f"   При несприятливому прогнозі:")
+    print(f"      P(Факт Спр. | Прогноз Неспр.) = ({P21}×{p_favorable})/{p_prog_unfav:.3f} = {p_fav_given_prog_unfav:.3f}")
+    print(f"      P(Факт Неспр. | Прогноз Неспр.) = ({P22}×{p_unfavorable})/{p_prog_unfav:.3f} = {p_unfav_given_prog_unfav:.3f}")
 
-    # Створюємо дерево
+    # КРОК 3: Розрахунок EV без дослідження
+    print(f"\n📊 КРОК 3: Очікувані значення БЕЗ дослідження:")
+
+    ev1_no_research = 0.5 * A1 + 0.5 * B1
+    ev2_no_research = 0.5 * A2 + 0.5 * B2
+    ev3_no_research = 0.5 * A3 + 0.5 * B3
+
+    print(f"   Велике виробництво: EV = 0.5×{A1:,.0f} + 0.5×{B1:,.0f} = {ev1_no_research:,.0f} г.о.")
+    print(f"   Мале підприємство:  EV = 0.5×{A2:,.0f} + 0.5×{B2:,.0f} = {ev2_no_research:,.0f} г.о.")
+    print(f"   Продаж патенту:     EV = 0.5×{A3:,.0f} + 0.5×{B3:,.0f} = {ev3_no_research:,.0f} г.о.")
+
+    ev_no_research = max(ev1_no_research, ev2_no_research, ev3_no_research)
+    print(f"   ➜ Оптимальне рішення без дослідження: EV = {ev_no_research:,.0f} г.о.")
+
+    # КРОК 4: Розрахунок EV З дослідженням
+    print(f"\n📊 КРОК 4: Очікувані значення З дослідженням:")
+
+    # При сприятливому прогнозі
+    print(f"\n   4.1. При сприятливому прогнозі (p={p_prog_fav:.3f}):")
+    ev1_prog_fav = p_fav_given_prog_fav * A1 + p_unfav_given_prog_fav * B1
+    ev2_prog_fav = p_fav_given_prog_fav * A2 + p_unfav_given_prog_fav * B2
+    ev3_prog_fav = p_fav_given_prog_fav * A3 + p_unfav_given_prog_fav * B3
+
+    print(f"      Велике: EV = {p_fav_given_prog_fav:.3f}×{A1:,.0f} + {p_unfav_given_prog_fav:.3f}×{B1:,.0f} = {ev1_prog_fav:,.0f} г.о.")
+    print(f"      Мале:   EV = {p_fav_given_prog_fav:.3f}×{A2:,.0f} + {p_unfav_given_prog_fav:.3f}×{B2:,.0f} = {ev2_prog_fav:,.0f} г.о.")
+    print(f"      Патент: EV = {p_fav_given_prog_fav:.3f}×{A3:,.0f} + {p_unfav_given_prog_fav:.3f}×{B3:,.0f} = {ev3_prog_fav:,.0f} г.о.")
+
+    ev_prog_fav = max(ev1_prog_fav, ev2_prog_fav, ev3_prog_fav)
+    print(f"      ➜ Оптимальне рішення: EV = {ev_prog_fav:,.0f} г.о.")
+
+    # При несприятливому прогнозі
+    print(f"\n   4.2. При несприятливому прогнозі (p={p_prog_unfav:.3f}):")
+    ev1_prog_unfav = p_fav_given_prog_unfav * A1 + p_unfav_given_prog_unfav * B1
+    ev2_prog_unfav = p_fav_given_prog_unfav * A2 + p_unfav_given_prog_unfav * B2
+    ev3_prog_unfav = p_fav_given_prog_unfav * A3 + p_unfav_given_prog_unfav * B3
+
+    print(f"      Велике: EV = {p_fav_given_prog_unfav:.3f}×{A1:,.0f} + {p_unfav_given_prog_unfav:.3f}×{B1:,.0f} = {ev1_prog_unfav:,.0f} г.о.")
+    print(f"      Мале:   EV = {p_fav_given_prog_unfav:.3f}×{A2:,.0f} + {p_unfav_given_prog_unfav:.3f}×{B2:,.0f} = {ev2_prog_unfav:,.0f} г.о.")
+    print(f"      Патент: EV = {p_fav_given_prog_unfav:.3f}×{A3:,.0f} + {p_unfav_given_prog_unfav:.3f}×{B3:,.0f} = {ev3_prog_unfav:,.0f} г.о.")
+
+    ev_prog_unfav = max(ev1_prog_unfav, ev2_prog_unfav, ev3_prog_unfav)
+    print(f"      ➜ Оптимальне рішення: EV = {ev_prog_unfav:,.0f} г.о.")
+
+    # Загальне EV з дослідженням (до вирахування вартості)
+    ev_with_research_before_cost = p_prog_fav * ev_prog_fav + p_prog_unfav * ev_prog_unfav
+    print(f"\n   4.3. Загальне EV з дослідженням (до вирахування вартості):")
+    print(f"      EV = {p_prog_fav:.3f}×{ev_prog_fav:,.0f} + {p_prog_unfav:.3f}×{ev_prog_unfav:,.0f}")
+    print(f"      EV = {ev_with_research_before_cost:,.0f} г.о.")
+
+    # З врахуванням вартості дослідження
+    ev_with_research = ev_with_research_before_cost - Q
+    print(f"\n   4.4. EV з дослідженням (після вирахування вартості {Q:,.0f} г.о.):")
+    print(f"      EV = {ev_with_research_before_cost:,.0f} - {Q:,.0f} = {ev_with_research:,.0f} г.о.")
+
+    # КРОК 5: Цінність інформації
+    evpi = ev_with_research - ev_no_research
+
+    print("\n" + "=" * 100)
+    print("💡 КРОК 5: ЦІННІСТЬ ДОДАТКОВОЇ ІНФОРМАЦІЇ (EVPI)")
+    print("=" * 100)
+    print(f"\n   EVPI = EV(з дослідженням) - EV(без дослідження)")
+    print(f"   EVPI = {ev_with_research:,.0f} - {ev_no_research:,.0f} = {evpi:,.0f} г.о.")
+
+    if evpi > 0:
+        print(f"\n   ✅ Дослідження ринку ВАРТЕ того!")
+        print(f"   Додатковий прибуток: {evpi:,.0f} г.о.")
+        print(f"   Рентабельність: {(evpi/Q)*100:.1f}% від вартості дослідження")
+    else:
+        print(f"\n   ❌ Дослідження ринку НЕ ВАРТЕ того!")
+        print(f"   Втрата: {abs(evpi):,.0f} г.о.")
+
+    # Створюємо дерево (спрощена версія для візуалізації)
     tree = DecisionTree("Завдання 2: Дослідження ринку")
 
-    # Кореневий вузол - рішення про дослідження
     root = DecisionNode("Досліджувати?", 0.5, 5)
     tree.root = root
 
-    # Гілка "Не досліджувати" - як у завданні 1
-    decision_no_research = DecisionNode("Рішення", 3, 7.5)
+    # Гілка "Не досліджувати"
+    decision_no_research = DecisionNode("Рішення", 3, 8)
+    chance_no1 = ChanceNode("Ринок", 5.5, 9.5)
+    chance_no2 = ChanceNode("Ринок", 5.5, 8)
+    chance_no3 = ChanceNode("Ринок", 5.5, 6.5)
 
-    chance_no1 = ChanceNode("Ринок", 5.5, 9)
-    chance_no2 = ChanceNode("Ринок", 5.5, 7.5)
-    chance_no3 = ChanceNode("Ринок", 5.5, 6)
-
-    end_no11 = EndNode("С", 8, 9.5, A1)
-    end_no12 = EndNode("Н", 8, 8.5, B1)
-    end_no21 = EndNode("С", 8, 8, A2)
-    end_no22 = EndNode("Н", 8, 7, B2)
-    end_no31 = EndNode("С", 8, 6.5, A3)
-    end_no32 = EndNode("Н", 8, 5.5, B3)
+    end_no11 = EndNode("С", 8, 10, A1)
+    end_no12 = EndNode("Н", 8, 9, B1)
+    end_no21 = EndNode("С", 8, 8.5, A2)
+    end_no22 = EndNode("Н", 8, 7.5, B2)
+    end_no31 = EndNode("С", 8, 7, A3)
+    end_no32 = EndNode("Н", 8, 6, B3)
 
     root.add_child(decision_no_research, "Не досліджувати")
-
     decision_no_research.add_child(chance_no1, "Велике")
     decision_no_research.add_child(chance_no2, "Мале")
     decision_no_research.add_child(chance_no3, "Патент")
@@ -446,28 +559,28 @@ def task2_market_research_tree(A1: float, A2: float, A3: float,
     chance_no3.add_child(end_no31, "Спр.", 0.5)
     chance_no3.add_child(end_no32, "Неспр.", 0.5)
 
-    # Гілка "Досліджувати" - враховуємо прогноз
-    chance_research = ChanceNode("Прогноз", 3, 2.5)
+    # Гілка "Досліджувати"
+    chance_research = ChanceNode("Прогноз", 3, 2)
     root.add_child(chance_research, "Досліджувати", payoff=-Q)
 
     # При сприятливому прогнозі
     decision_prog_fav = DecisionNode("Рішення", 5.5, 4)
-    chance_research.add_child(decision_prog_fav, "Спр. прогноз", 0.75)
+    chance_research.add_child(decision_prog_fav, "Спр. прогноз", p_prog_fav)
 
-    chance_fav1 = ChanceNode("Ринок", 8, 5)
+    chance_fav1 = ChanceNode("Ринок", 8, 5.5)
     chance_fav2 = ChanceNode("Ринок", 8, 4)
-    chance_fav3 = ChanceNode("Ринок", 8, 3)
+    chance_fav3 = ChanceNode("Ринок", 8, 2.5)
 
     decision_prog_fav.add_child(chance_fav1, "Велике")
     decision_prog_fav.add_child(chance_fav2, "Мале")
     decision_prog_fav.add_child(chance_fav3, "Патент")
 
-    end_fav11 = EndNode("С", 10, 5.5, A1)
-    end_fav12 = EndNode("Н", 10, 4.5, B1)
-    end_fav21 = EndNode("С", 10, 4.3, A2)
-    end_fav22 = EndNode("Н", 10, 3.7, B2)
-    end_fav31 = EndNode("С", 10, 3.3, A3)
-    end_fav32 = EndNode("Н", 10, 2.7, B3)
+    end_fav11 = EndNode("С", 10, 6, A1)
+    end_fav12 = EndNode("Н", 10, 5, B1)
+    end_fav21 = EndNode("С", 10, 4.5, A2)
+    end_fav22 = EndNode("Н", 10, 3.5, B2)
+    end_fav31 = EndNode("С", 10, 3, A3)
+    end_fav32 = EndNode("Н", 10, 2, B3)
 
     chance_fav1.add_child(end_fav11, "С", p_fav_given_prog_fav)
     chance_fav1.add_child(end_fav12, "Н", p_unfav_given_prog_fav)
@@ -477,23 +590,23 @@ def task2_market_research_tree(A1: float, A2: float, A3: float,
     chance_fav3.add_child(end_fav32, "Н", p_unfav_given_prog_fav)
 
     # При несприятливому прогнозі
-    decision_prog_unfav = DecisionNode("Рішення", 5.5, 1)
-    chance_research.add_child(decision_prog_unfav, "Неспр. прогноз", 0.25)
+    decision_prog_unfav = DecisionNode("Рішення", 5.5, 0.5)
+    chance_research.add_child(decision_prog_unfav, "Неспр. прогноз", p_prog_unfav)
 
-    chance_unfav1 = ChanceNode("Ринок", 8, 2)
-    chance_unfav2 = ChanceNode("Ринок", 8, 1)
-    chance_unfav3 = ChanceNode("Ринок", 8, 0)
+    chance_unfav1 = ChanceNode("Ринок", 8, 1.5)
+    chance_unfav2 = ChanceNode("Ринок", 8, 0)
+    chance_unfav3 = ChanceNode("Ринок", 8, -1.5)
 
     decision_prog_unfav.add_child(chance_unfav1, "Велике")
     decision_prog_unfav.add_child(chance_unfav2, "Мале")
     decision_prog_unfav.add_child(chance_unfav3, "Патент")
 
-    end_unfav11 = EndNode("С", 10, 2.5, A1)
-    end_unfav12 = EndNode("Н", 10, 1.5, B1)
-    end_unfav21 = EndNode("С", 10, 1.3, A2)
-    end_unfav22 = EndNode("Н", 10, 0.7, B2)
-    end_unfav31 = EndNode("С", 10, 0.3, A3)
-    end_unfav32 = EndNode("Н", 10, -0.3, B3)
+    end_unfav11 = EndNode("С", 10, 2, A1)
+    end_unfav12 = EndNode("Н", 10, 1, B1)
+    end_unfav21 = EndNode("С", 10, 0.5, A2)
+    end_unfav22 = EndNode("Н", 10, -0.5, B2)
+    end_unfav31 = EndNode("С", 10, -1, A3)
+    end_unfav32 = EndNode("Н", 10, -2, B3)
 
     chance_unfav1.add_child(end_unfav11, "С", p_fav_given_prog_unfav)
     chance_unfav1.add_child(end_unfav12, "Н", p_unfav_given_prog_unfav)
@@ -502,33 +615,8 @@ def task2_market_research_tree(A1: float, A2: float, A3: float,
     chance_unfav3.add_child(end_unfav31, "С", p_fav_given_prog_unfav)
     chance_unfav3.add_child(end_unfav32, "Н", p_unfav_given_prog_unfav)
 
-    # Розрахунок очікуваних значень
+    # Розрахунок очікуваних значень для дерева
     tree.calculate_expected_values(root)
-
-    # Аналіз результатів
-    print("\n" + "=" * 100)
-    print("📊 АНАЛІЗ ОЧІКУВАНИХ ЗНАЧЕНЬ:")
-    print("=" * 100)
-
-    # Без дослідження
-    ev_no_research = decision_no_research.expected_value
-    print(f"\n1️⃣  Без дослідження ринку:")
-    print(f"   EV = {ev_no_research:,.0f} г.о.")
-
-    # З дослідженням
-    ev_with_research = chance_research.expected_value - Q
-    print(f"\n2️⃣  З дослідженням ринку:")
-    print(f"   EV = {chance_research.expected_value:,.0f} - {Q:,.0f} = {ev_with_research:,.0f} г.о.")
-
-    # Цінність інформації
-    evpi = ev_with_research - ev_no_research
-    print(f"\n💡 ЦІННІСТЬ ДОДАТКОВОЇ ІНФОРМАЦІЇ:")
-    print(f"   EVPI = {evpi:,.0f} г.о.")
-
-    if evpi > 0:
-        print(f"   ✅ Дослідження ринку ВАРТЕ того (додатковий прибуток: {evpi:,.0f} г.о.)")
-    else:
-        print(f"   ❌ Дослідження ринку НЕ ВАРТЕ того (втрата: {abs(evpi):,.0f} г.о.)")
 
     print("\n" + "=" * 100)
     print("✅ ОПТИМАЛЬНЕ РІШЕННЯ:")
@@ -537,143 +625,146 @@ def task2_market_research_tree(A1: float, A2: float, A3: float,
     if ev_with_research > ev_no_research:
         print(f"\n   Провести дослідження ринку")
         print(f"   Очікуване значення: {ev_with_research:,.0f} г.о.")
+        print(f"   Стратегія:")
+        print(f"      • При сприятливому прогнозі → оптимальне рішення з EV = {ev_prog_fav:,.0f} г.о.")
+        print(f"      • При несприятливому прогнозі → оптимальне рішення з EV = {ev_prog_unfav:,.0f} г.о.")
     else:
         print(f"\n   Не проводити дослідження ринку")
         print(f"   Очікуване значення: {ev_no_research:,.0f} г.о.")
 
-    # Малюємо дерево (спрощену версію через складність)
-    # tree.draw_tree("task2_decision_tree.png")
+    tree.draw_tree("task2_decision_tree.png")
 
     return tree, evpi
 
 
-# ============================================================================
-# ЗАВДАННЯ №3: ВИБІР ПОСТАЧАЛЬНИКА
-# ============================================================================
+
 
 def task3_supplier_selection_tree(prob_A: List[float], prob_B: List[float],
-                                  K: float, N: int, L: float):
-    """
-    Побудова дерева рішень для вибору постачальника
+                                      K: float, N: int, L: float):
+        """
+        Побудова дерева рішень для вибору постачальника
 
-    prob_A, prob_B - ймовірності відсотків браку для постачальників
-    K - витрати на усунення браку одного виробу
-    N - кількість виробів у партії
-    L - знижка від постачальника B
-    """
-    print("\n" + "=" * 100)
-    print("ЗАВДАННЯ №3: ВИБІР ПОСТАЧАЛЬНИКА")
-    print("=" * 100)
+        prob_A, prob_B - ймовірності відсотків браку для постачальників
+        K - витрати на усунення браку одного виробу
+        N - кількість виробів у партії
+        L - знижка від постачальника B
+        """
+        print("\n" + "=" * 100)
+        print("ЗАВДАННЯ №3: ВИБІР ПОСТАЧАЛЬНИКА")
+        print("=" * 100)
 
-    print("\n📋 ВХІДНІ ДАНІ:")
-    print(f"   Розмір партії: {N:,} шт.")
-    print(f"   Витрати на усунення браку: {K:,.0f} г.о./шт.")
-    print(f"   Знижка від постачальника B: {L:,.0f} г.о.")
+        print("\n📋 ВХІДНІ ДАНІ:")
+        print(f"   Розмір партії: {N:,} шт.")
+        print(f"   Витрати на усунення браку: {K:,.0f} г.о./шт.")
+        print(f"   Знижка від постачальника B: {L:,.0f} г.о.")
 
-    print(f"\n   Ймовірності % браку:")
-    print(f"      {'% браку':<10} {'Постачальник A':<20} {'Постачальник B':<20}")
-    print(f"      {'-' * 50}")
-    for i, (pa, pb) in enumerate(zip(prob_A, prob_B), 1):
-        print(f"      {i}%{' ' * 8} {pa:<20.2f} {pb:<20.2f}")
+        print(f"\n   Ймовірності % браку:")
+        print(f"      {'% браку':<10} {'Постачальник A':<20} {'Постачальник B':<20}")
+        print(f"      {'-' * 50}")
+        for i, (pa, pb) in enumerate(zip(prob_A, prob_B), 1):
+            print(f"      {i}%{' ' * 8} {pa:<20.2f} {pb:<20.2f}")
 
-    # Створюємо дерево
-    tree = DecisionTree("Завдання 3: Вибір постачальника")
+        # Створюємо дерево
+        tree = DecisionTree("Завдання 3: Вибір постачальника")
 
-    # Кореневий вузол - вибір постачальника
-    root = DecisionNode("Постачальник", 1, 5)
-    tree.root = root
+        # Кореневий вузол - вибір постачальника
+        root = DecisionNode("Постачальник", 1, 5)
+        tree.root = root
 
-    # Вузли випадковості для кожного постачальника
-    chance_A = ChanceNode("% браку", 4, 7)
-    chance_B = ChanceNode("% браку", 4, 3)
+        # Вузли випадковості для кожного постачальника - більша відстань
+        chance_A = ChanceNode("% браку", 4, 8)
+        chance_B = ChanceNode("% браку", 4, 2)
 
-    root.add_child(chance_A, "Постачальник A")
-    root.add_child(chance_B, "Постачальник B", payoff=L)  # Знижка
+        root.add_child(chance_A, "Постачальник A")
+        root.add_child(chance_B, "Постачальник B", payoff=L)  # Знижка
 
-    # Кінцеві вузли для постачальника A
-    y_positions_A = np.linspace(9, 5, len(prob_A))
-    for i, (prob, y_pos) in enumerate(zip(prob_A, y_positions_A), 1):
-        defect_rate = i / 100.0
-        cost = -defect_rate * N * K  # Витрати (негативні)
-        end_node = EndNode(f"{i}%", 7, y_pos, cost)
-        chance_A.add_child(end_node, f"{i}% браку", prob)
+        # Кінцеві вузли для постачальника A - збільшено вертикальний розкид
+        y_positions_A = np.linspace(10, 6, len(prob_A))
+        for i, (prob, y_pos) in enumerate(zip(prob_A, y_positions_A), 1):
+            defect_rate = i / 100.0
+            cost = -defect_rate * N * K  # Витрати (негативні)
+            end_node = EndNode(f"{i}%", 7, y_pos, cost)
+            chance_A.add_child(end_node, f"{i}% браку", prob)
 
-    # Кінцеві вузли для постачальника B
-    y_positions_B = np.linspace(5, 1, len(prob_B))
-    for i, (prob, y_pos) in enumerate(zip(prob_B, y_positions_B), 1):
-        defect_rate = i / 100.0
-        cost = L - defect_rate * N * K  # Знижка мінус витрати
-        end_node = EndNode(f"{i}%", 7, y_pos, cost)
-        chance_B.add_child(end_node, f"{i}% браку", prob)
+        # Кінцеві вузли для постачальника B - збільшено вертикальний розкид
+        y_positions_B = np.linspace(4, 0, len(prob_B))
+        for i, (prob, y_pos) in enumerate(zip(prob_B, y_positions_B), 1):
+            defect_rate = i / 100.0
+            cost = L - defect_rate * N * K  # Знижка мінус витрати
+            end_node = EndNode(f"{i}%", 7, y_pos, cost)
+            chance_B.add_child(end_node, f"{i}% браку", prob)
 
-    # Розрахунок очікуваних значень
-    tree.calculate_expected_values(root)
+        # Розрахунок очікуваних значень
+        tree.calculate_expected_values(root)
 
-    # Аналіз результатів
-    print("\n" + "=" * 100)
-    print("📊 АНАЛІЗ ОЧІКУВАНИХ ВИТРАТ:")
-    print("=" * 100)
+        # Аналіз результатів
+        print("\n" + "=" * 100)
+        print("📊 АНАЛІЗ ОЧІКУВАНИХ ВИТРАТ:")
+        print("=" * 100)
 
-    # Постачальник A
-    ev_A = 0
-    print(f"\n1️⃣  Постачальник A:")
-    for i, prob in enumerate(prob_A, 1):
-        defect_rate = i / 100.0
-        cost = -defect_rate * N * K
-        ev_A += prob * cost
-        print(f"   {i}% браку (p={prob:.2f}): витрати = {cost:,.0f} г.о.")
-    print(f"   Очікувані витрати: {ev_A:,.0f} г.о.")
+        # Постачальник A
+        ev_A = 0
+        print(f"\n1️⃣  Постачальник A:")
+        for i, prob in enumerate(prob_A, 1):
+            defect_rate = i / 100.0
+            cost = -defect_rate * N * K
+            ev_A += prob * cost
+            print(f"   {i}% браку (p={prob:.2f}): витрати = {cost:,.0f} г.о.")
+        print(f"   Очікувані витрати: {ev_A:,.0f} г.о.")
 
-    # Постачальник B
-    ev_B = L
-    print(f"\n2️⃣  Постачальник B:")
-    print(f"   Знижка: +{L:,.0f} г.о.")
-    for i, prob in enumerate(prob_B, 1):
-        defect_rate = i / 100.0
-        cost = -defect_rate * N * K
-        ev_B += prob * cost
-        print(f"   {i}% браку (p={prob:.2f}): витрати = {cost:,.0f} г.о.")
-    print(f"   Очікувані витрати (з знижкою): {ev_B:,.0f} г.о.")
+        # Постачальник B
+        ev_B = L
+        print(f"\n2️⃣  Постачальник B:")
+        print(f"   Знижка: +{L:,.0f} г.о.")
+        for i, prob in enumerate(prob_B, 1):
+            defect_rate = i / 100.0
+            cost = -defect_rate * N * K
+            ev_B += prob * cost
+            print(f"   {i}% браку (p={prob:.2f}): витрати = {cost:,.0f} г.о.")
+        print(f"   Очікувані витрати (з знижкою): {ev_B:,.0f} г.о.")
 
-    # Порівняння
-    print("\n" + "=" * 100)
-    print("✅ ОПТИМАЛЬНЕ РІШЕННЯ:")
-    print("=" * 100)
+        # Порівняння
+        print("\n" + "=" * 100)
+        print("✅ ОПТИМАЛЬНЕ РІШЕННЯ:")
+        print("=" * 100)
 
-    diff = ev_B - ev_A
+        diff = ev_B - ev_A
 
-    if ev_B > ev_A:
-        print(f"\n   Вибрати постачальника B")
-        print(f"   Переваги: {diff:,.0f} г.о.")
-        print(f"   Очікуваний результат: {ev_B:,.0f} г.о.")
-    else:
-        print(f"\n   Вибрати постачальника A")
-        print(f"   Переваги: {abs(diff):,.0f} г.о.")
-        print(f"   Очікуваний результат: {ev_A:,.0f} г.о.")
+        if ev_B > ev_A:
+            print(f"\n   Вибрати постачальника B")
+            print(f"   Переваги: {diff:,.0f} г.о.")
+            print(f"   Очікуваний результат: {ev_B:,.0f} г.о.")
+        else:
+            print(f"\n   Вибрати постачальника A")
+            print(f"   Переваги: {abs(diff):,.0f} г.о.")
+            print(f"   Очікуваний результат: {ev_A:,.0f} г.о.")
 
-    print(f"\n💡 АНАЛІЗ:")
-    avg_defect_A = sum((i / 100.0) * prob for i, prob in enumerate(prob_A, 1))
-    avg_defect_B = sum((i / 100.0) * prob for i, prob in enumerate(prob_B, 1))
+        print(f"\n💡 АНАЛІЗ:")
+        avg_defect_A = sum((i / 100.0) * prob for i, prob in enumerate(prob_A, 1))
+        avg_defect_B = sum((i / 100.0) * prob for i, prob in enumerate(prob_B, 1))
 
-    print(f"   Середній % браку:")
-    print(f"      Постачальник A: {avg_defect_A * 100:.2f}%")
-    print(f"      Постачальник B: {avg_defect_B * 100:.2f}%")
+        print(f"   Середній % браку:")
+        print(f"      Постачальник A: {avg_defect_A * 100:.2f}%")
+        print(f"      Постачальник B: {avg_defect_B * 100:.2f}%")
 
-    break_even = L / (N * K * (avg_defect_B - avg_defect_A)) * 100
-    if avg_defect_B > avg_defect_A:
-        print(f"\n   Точка беззбитковості:")
-        print(f"   Знижка має покривати різницю у витратах на брак")
-        print(f"   Поточна різниця: {(avg_defect_B - avg_defect_A) * 100:.2f}%")
+        break_even = L / (N * K * (avg_defect_B - avg_defect_A)) * 100
+        if avg_defect_B > avg_defect_A:
+            print(f"\n   Точка беззбитковості:")
+            print(f"   Знижка має покривати різницю у витратах на брак")
+            print(f"   Поточна різниця: {(avg_defect_B - avg_defect_A) * 100:.2f}%")
 
-    # Малюємо дерево
-    tree.draw_tree("task3_decision_tree.png")
+        tree.draw_tree("task3_decision_tree.png")
 
-    return tree, ev_A, ev_B
+        return tree, ev_A, ev_B
 
 
-# ============================================================================
-# ОСНОВНА ПРОГРАМА - ВАРІАНТ 4
-# ============================================================================
+
+
+
+
+
+
+
 
 def main():
     print("=" * 100)
@@ -682,13 +773,8 @@ def main():
     print(" " * 40 + "ВАРІАНТ 4")
     print("=" * 100)
 
-    # Налаштування для кирилиці у matplotlib
     plt.rcParams['font.family'] = 'DejaVu Sans'
     plt.rcParams['axes.unicode_minus'] = False
-
-    # ========================================================================
-    # ВХІДНІ ДАНІ З ВАРІАНТУ 4
-    # ========================================================================
 
     # Завдання 1 та 2
     A1 = 550000  # Велике виробництво, сприятливі умови
@@ -712,20 +798,12 @@ def main():
     N = 15000  # Кількість виробів у партії
     L = 1100  # Знижка від постачальника B
 
-    # ========================================================================
-    # ЗАВДАННЯ №1: ВИБІР ТИПУ ВИРОБНИЦТВА
-    # ========================================================================
-
     print("\n\n")
     print("╔" + "=" * 98 + "╗")
     print("║" + " " * 30 + "ЗАВДАННЯ №1: ВИБІР ТИПУ ВИРОБНИЦТВА" + " " * 33 + "║")
     print("╚" + "=" * 98 + "╝")
 
     tree1, best_decision1 = task1_create_production_tree(A1, A2, A3, B1, B2, B3)
-
-    # ========================================================================
-    # ЗАВДАННЯ №2: ДОСЛІДЖЕННЯ РИНКУ
-    # ========================================================================
 
     print("\n\n")
     print("╔" + "=" * 98 + "╗")
@@ -734,9 +812,6 @@ def main():
 
     tree2, evpi = task2_market_research_tree(A1, A2, A3, B1, B2, B3, P11, P12, P21, P22, Q)
 
-    # ========================================================================
-    # ЗАВДАННЯ №3: ВИБІР ПОСТАЧАЛЬНИКА
-    # ========================================================================
 
     print("\n\n")
     print("╔" + "=" * 98 + "╗")
@@ -745,51 +820,14 @@ def main():
 
     tree3, ev_A, ev_B = task3_supplier_selection_tree(prob_A, prob_B, K, N, L)
 
-    # ========================================================================
-    # ЗАГАЛЬНІ ВИСНОВКИ
-    # ========================================================================
 
     print("\n\n")
     print("=" * 100)
     print("📈 ЗАГАЛЬНІ ВИСНОВКИ")
     print("=" * 100)
 
-    print("""
-╔════════════════════════════════════════════════════════════════════════════════════════════════╗
-║                              МЕТОД ДЕРЕВА РІШЕНЬ                                               ║
-╚════════════════════════════════════════════════════════════════════════════════════════════════╝
+    print(f"   ЗАВДАННЯ 1 (Вибір типу виробництва):")
 
-ПЕРЕВАГИ МЕТОДУ:
-✓ Наочність - графічне представлення всіх можливих варіантів
-✓ Структурованість - чітка послідовність рішень та подій
-✓ Врахування невизначеності - ймовірності для випадкових подій
-✓ Кількісна оцінка - очікувані значення для кожного варіанту
-✓ Аналіз альтернатив - порівняння різних стратегій
-✓ Цінність інформації - оцінка вартості додаткових досліджень
-
-ОСНОВНІ ЕЛЕМЕНТИ:
-1. Вузол рішення (□) - точка прийняття рішення
-2. Вузол випадковості (○) - випадкова подія з відомими ймовірностями
-3. Кінцевий вузол (△) - результат певної послідовності рішень та подій
-4. Гілки - можливі варіанти рішень або події
-
-МЕТОДОЛОГІЯ:
-1. Прямий хід - побудова дерева зліва направо:
-   • Визначення послідовності рішень та подій
-   • Встановлення ймовірностей для випадкових подій
-   • Визначення виграшів у кінцевих вузлах
-
-2. Зворотній хід - розрахунок зправа наліво:
-   • Обчислення очікуваних значень (EV) для вузлів випадковості
-   • Вибір оптимальних рішень (максимум EV) для вузлів рішень
-   • Знаходження оптимальної стратегії
-
-╔════════════════════════════════════════════════════════════════════════════════════════════════╗
-║                                РЕЗУЛЬТАТИ ЗА ВАРІАНТОМ 4                                       ║
-╚════════════════════════════════════════════════════════════════════════════════════════════════╝
-
-ЗАВДАННЯ 1 (Вибір типу виробництва):
-""")
 
     print(f"   Оптимальне рішення: {best_decision1[0]}")
     print(f"   Очікуваний прибуток: {best_decision1[1]:,.0f} г.о.")
@@ -829,51 +867,8 @@ def main():
         print(f"   Рекомендація: Вибрати постачальника A")
         print(f"   Економія: {ev_A - ev_B:,.0f} г.о.")
 
-    print(f"""
-   Висновок: Вибір постачальника базується на компромісі між нижчою
-   ціною (знижка {L:,.0f} г.о.) та можливо вищим відсотком браку.
-   Очікувані витрати враховують як економію на закупівлі, так і
-   додаткові витрати на усунення браку.
-""")
-
-    print("""
-╔════════════════════════════════════════════════════════════════════════════════════════════════╗
-║                                  ПРАКТИЧНІ РЕКОМЕНДАЦІЇ                                        ║
-╚════════════════════════════════════════════════════════════════════════════════════════════════╝
-
-1. ЗБІР ДАНИХ:
-   • Історична статистика для оцінки ймовірностей
-   • Експертні оцінки для унікальних ситуацій
-   • Ринкові дослідження для зменшення невизначеності
-
-2. ПОБУДОВА ДЕРЕВА:
-   • Починати з найважливіших рішень
-   • Не перевантажувати деталями
-   • Враховувати послідовність подій у часі
-
-3. АНАЛІЗ ЧУТЛИВОСТІ:
-   • Перевірити вплив зміни ймовірностей
-   • Оцінити вплив зміни виграшів
-   • Визначити критичні параметри
-
-4. ПРИЙНЯТТЯ РІШЕННЯ:
-   • Враховувати не тільки очікувані значення
-   • Оцінювати ризики (дисперсію результатів)
-   • Брати до уваги обмеження та побічні ефекти
-
-5. МОНІТОРИНГ:
-   • Відстежувати фактичні результати
-   • Порівнювати з прогнозами
-   • Коригувати модель на основі досвіду
-    """)
-
-    print("\n" + "=" * 100)
-    print(" " * 35 + "ПРОГРАМУ ЗАВЕРШЕНО")
-    print("=" * 100)
-    print("\n📁 Згенеровані файли:")
     print("   • task1_decision_tree.png - дерево рішень для завдання 1")
     print("   • task3_decision_tree.png - дерево рішень для завдання 3")
-
 
 if __name__ == "__main__":
     main()
