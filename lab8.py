@@ -684,7 +684,6 @@ def task3_supplier_selection_tree(prob_A: List[float], prob_B: List[float], K: f
         print(f"   Знижка має покривати різницю у витратах на брак")
         print(f"   Поточна різниця: {(avg_defect_B - avg_defect_A) * 100:.2f}%")
 
-    # Малюємо дерево з меншою висотою
     tree.draw_tree("task3_decision_tree.png", figsize=(14, 8), ylim=(-0.5, 10.5))
 
     return tree, ev_A, ev_B
